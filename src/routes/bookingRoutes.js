@@ -60,5 +60,15 @@ router.get('/shop/:shopId', protect, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+router.put('/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const booking = await Booking.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    if (!booking) return res.status(404).json({ message: '找不到預約' });
+    res.json(booking);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;
