@@ -69,5 +69,15 @@ router.get('/shop/:shopId', protect, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// 一次性修復：刪除 bookingNo index
+router.get('/fix-index', async (req, res) => {
+  try {
+    const Booking = require('../models/Booking');
+    await Booking.collection.dropIndex('bookingNo_1');
+    res.json({ success: true, message: 'Index dropped!' });
+  } catch (err) {
+    res.json({ success: false, message: err.message });
+  }
+});
 
 module.exports = router;
