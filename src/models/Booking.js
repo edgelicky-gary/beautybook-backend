@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
-  shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
+  shopId: { type: String, required: true },
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service' },
+  serviceId: { type: String },
   serviceName: { type: String, required: true },
   servicePrice: { type: Number, required: true },
-  serviceDuration: { type: Number, required: true },
+  serviceDuration: { type: Number, default: 60 },
   date: { type: Date, required: true },
   startTime: { type: String, required: true },
   endTime: { type: String },
@@ -21,4 +21,4 @@ const bookingSchema = new mongoose.Schema({
   review: { type: String },
 }, { timestamps: true });
 
-module.exports = mongoose.model('Booking', bookingSchema);
+mongoose.models.Booking || mongoose.model('Booking', bookingSchema)
