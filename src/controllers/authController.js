@@ -146,3 +146,41 @@ exports.changePassword = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// ─── 手機號碼快速登入/註冊 ────────────────────────────────
+exports.phoneLogin = async (req, res) => {
+  try {
+    const { phone, name } = req.body;
+    if (!phone) return res.status(400).json({ message: '請輸入手機號碼' });
+
+    let user = await User.findOne({ phone });
+    if (user) {
+      // 已有帳號，直接登入
+      const token = generateToken(user._id);
+      return res.json({
+        success: true,
+        token,
+        user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
+        isNewUser: false,
+      });
+    }
+
+    // 新顧客，自動建立帳號
+    if (!name) return res.status(400).json({ message: '請輸入姓名' });
+    user = await User.create({
+      name,
+      phone,
+      email: `phone_${phone}@beautybook.app`,
+      password: Math.random().toString(36) + Math.random().toString(36),
+    });
+
+    const token = generateToken(user._id);
+    res.status(201).json({
+      success: true,
+      token,
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
+      isNewUser: true,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
