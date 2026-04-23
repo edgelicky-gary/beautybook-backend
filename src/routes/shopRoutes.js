@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Shop = require('../models/Shop');
-const authMiddleware = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/protect');
 
 // POST /api/shop/register
 router.post('/register', async (req, res) => {
