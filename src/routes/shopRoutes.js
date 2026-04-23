@@ -3,6 +3,28 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Shop = require('../models/Shop');
 
+// GET /api/shops - 顧客端取得所有店家
+router.get('/', async (req, res) => {
+  try {
+    const shops = await Shop.find({ isActive: { $ne: false } }).select('-password -lineChannelAccessToken');
+    res.json(shops);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/shops/:id - 取得單一店家
+router.get('/:id', async (req, res) => {
+  try {
+    const shop = await Shop.findById(req.params.id).select('-password -lineChannelAccessToken');
+    if (!shop) return res.status(404).json({ message: '找不到店家' });
+    res.json(shop);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/shop/register
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, category, phone, address, description } = req.body;
@@ -22,6 +44,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// POST /api/shop/login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -40,6 +63,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// PUT /api/shop/:id
 router.put('/:id', async (req, res) => {
   try {
     const { password, email, ...updates } = req.body;
