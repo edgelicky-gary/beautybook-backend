@@ -4,36 +4,28 @@ const Booking = require('../models/Booking');
 
 router.post('/', protect, async (req, res) => {
   try {
-    console.log('收到預約請求:', JSON.stringify(req.body));
     const { shopId, shopName, shopAddress, serviceId, serviceName, servicePrice, serviceDuration, date, startTime, customerNote, paymentMethod } = req.body;
-
     if (!shopId || !serviceName || !servicePrice || !date || !startTime) {
-      return res.status(400).json({ message: '缺少必要欄位', received: req.body });
+      return res.status(400).json({ message: '缺少必要欄位' });
     }
-
     const booking = new Booking({
       shopId: shopId.toString(),
       shopName: shopName || '',
       shopAddress: shopAddress || '',
       customerId: req.userId,
-      serviceName: serviceName,
-      servicePrice: Number(servicePrice),
+      serviceName, servicePrice: Number(servicePrice),
       serviceDuration: Number(serviceDuration) || 60,
-      date: new Date(date),
-      startTime: startTime,
+      date: new Date(date), startTime,
       price: Number(servicePrice),
       duration: Number(serviceDuration) || 60,
       customerNote: customerNote || '',
       paymentMethod: paymentMethod || 'none',
       status: 'confirmed',
     });
-
     await booking.save();
-    console.log('儲存成功:', booking._id, '店家:', booking.shopName);
     res.status(201).json({ success: true, booking });
   } catch (err) {
-    console.error('預約錯誤:', err.message);
-    res.status(500).json({ message: err.message, details: err.errors });
+    res.status(500).json({ message: err.message });
   }
 });
 
@@ -67,8 +59,6 @@ router.get('/shop/:shopId', protect, async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-});
-
 });
 
 module.exports = router;
