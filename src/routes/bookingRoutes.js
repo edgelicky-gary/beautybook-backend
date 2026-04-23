@@ -13,6 +13,8 @@ router.post('/', protect, async (req, res) => {
 
     const booking = new Booking({
       shopId: shopId.toString(),
+      shopName: shopName || '',
+      shopAddress: shopAddress || '',
       customerId: req.userId,
       serviceName: serviceName,
       servicePrice: Number(servicePrice),
@@ -27,10 +29,10 @@ router.post('/', protect, async (req, res) => {
     });
 
     await booking.save();
-    console.log('儲存成功:', booking._id);
+    console.log('儲存成功:', booking._id, '店家:', booking.shopName);
     res.status(201).json({ success: true, booking });
   } catch (err) {
-    console.error('預約錯誤:', err.message, err.stack);
+    console.error('預約錯誤:', err.message);
     res.status(500).json({ message: err.message, details: err.errors });
   }
 });
@@ -40,7 +42,6 @@ router.get('/my', protect, async (req, res) => {
     const bookings = await Booking.find({ customerId: req.userId }).sort({ date: -1 });
     res.json({ success: true, bookings });
   } catch (err) {
-    console.error('取得預約錯誤:', err.message);
     res.status(500).json({ message: err.message });
   }
 });
@@ -53,7 +54,6 @@ router.put('/:id/cancel', protect, async (req, res) => {
     await booking.save();
     res.json({ success: true, booking });
   } catch (err) {
-    console.error('取消預約錯誤:', err.message);
     res.status(500).json({ message: err.message });
   }
 });
@@ -65,14 +65,12 @@ router.get('/shop/:shopId', protect, async (req, res) => {
       .sort({ date: -1 });
     res.json({ success: true, bookings });
   } catch (err) {
-    console.error('取得店家預約錯誤:', err.message);
     res.status(500).json({ message: err.message });
   }
 });
-// 一次性修復：刪除 bookingNo index
+
 router.get('/fix-index', async (req, res) => {
   try {
-    const Booking = require('../models/Booking');
     await Booking.collection.dropIndex('bookingNo_1');
     res.json({ success: true, message: 'Index dropped!' });
   } catch (err) {
