@@ -7,6 +7,8 @@ if (mongoose.models.Booking) {
 const bookingSchema = new mongoose.Schema({
   bookingNo: { type: String, default: null, sparse: true },
   shopId: { type: String, required: true },
+  shopName: { type: String, default: '' },
+  shopAddress: { type: String, default: '' },
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   serviceName: { type: String, required: true },
   servicePrice: { type: Number, required: true },
