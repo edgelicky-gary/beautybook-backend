@@ -1,37 +1,28 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const bodyParser = require('body-parser');
 require('dotenv').config();
 
 const app = express();
+app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true,
-}));
-app.use(express.json());
+app.use('/api/auth',     require('./routes/authRoutes'));
+app.use('/api/shops',    require('./routes/shopRoutes'));
+app.use('/api/services', require('./routes/serviceRoutes'));
+app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/payment',  require('./routes/paymentRoutes'));
+app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
+app.use('/api/admin',    require('./routes/adminRoutes'));
 
-const authRoutes = require('./routes/authRoutes');
-const bookingRoutes = require('./routes/bookingRoutes');
-const shopRoutes = require('./routes/shopRoutes');
-const serviceRoutes = require('./routes/serviceRoutes');
-const subscriptionRoutes = require('./routes/subscriptionRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
-
-app.use('/api/auth', authRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/shops', shopRoutes);
-app.use('/api/services', serviceRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/payments', paymentRoutes);
-
-app.get('/', (req, res) => res.json({ message: 'BeautyBook API is running!' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
 
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB error:', err));
-
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  .then(() => {
+    console.log('✅ MongoDB 連線成功');
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => console.log(`🚀 BeautyBook 後端啟動於 http://localhost:${PORT}`));
+  })
+  .catch(err => console.error('❌ MongoDB 連線失敗:', err));
