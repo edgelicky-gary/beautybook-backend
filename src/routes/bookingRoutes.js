@@ -69,13 +69,6 @@ router.get('/shop/:shopId', protect, async (req, res) => {
   }
 });
 
-router.get('/fix-index', async (req, res) => {
-  try {
-    await Booking.collection.dropIndex('bookingNo_1');
-    res.json({ success: true, message: 'Index dropped!' });
-  } catch (err) {
-    res.json({ success: false, message: err.message });
-  }
 });
 
 module.exports = router;
