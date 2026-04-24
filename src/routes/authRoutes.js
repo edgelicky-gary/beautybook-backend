@@ -7,4 +7,5 @@ router.post('/login', auth.login);
 router.get('/me', protect, auth.getMe);
 router.put('/change-password', protect, auth.changePassword);
 router.post('/phone-login', auth.phoneLogin);
+router.post('/line-login', auth.lineLogin);
 module.exports = router;
