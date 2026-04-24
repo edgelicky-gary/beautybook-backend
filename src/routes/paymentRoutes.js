@@ -7,7 +7,7 @@ const Shop = require('../models/Shop');
 const ECPAY_MERCHANT_ID = '2000132';
 const ECPAY_HASH_KEY = '5294y06JbISpM5x9';
 const ECPAY_HASH_IV = 'v77hoKGq4kWxNNIS';
-const ECPAY_URL = 'https://payment-stage.ecpay.com.tw/Checkout/Index';
+const ECPAY_URL = 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckout/Index';
 const BACKEND_URL = 'https://beautybook-backend-production.up.railway.app';
 
 // 產生檢查碼
