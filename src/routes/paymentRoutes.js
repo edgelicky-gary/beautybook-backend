@@ -46,7 +46,7 @@ router.post('/create', async (req, res) => {
       TradeDesc: `BeautyBook月費-${billing.shopName}`,
       ItemName: `BeautyBook月費 NT$${billing.totalFee}`,
       ReturnURL: `${BACKEND_URL}/api/payment/notify`,
-      OrderResultURL: `${process.env.SHOP_ADMIN_URL || 'https://beautybook-shop-admin.vercel.app'}/payment-result`,
+      ClientBackURL: `https://beautybook-shop-admin.vercel.app/payment-result`,
       ChoosePayment: 'Credit',
       EncryptType: 1,
     };
