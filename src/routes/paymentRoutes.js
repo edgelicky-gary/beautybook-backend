@@ -40,7 +40,7 @@ router.post('/create', async (req, res) => {
     const params = {
       MerchantID: ECPAY_MERCHANT_ID,
       MerchantTradeNo: orderId,
-      MerchantTradeDate: new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }).replace(/\//g, '/').replace(',', ''),
+      MerchantTradeDate: (() => { const d = new Date(); const pad = n => String(n).padStart(2, '0'); return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; })(),
       PaymentType: 'aio',
       TotalAmount: billing.totalFee,
       TradeDesc: `BeautyBook月費-${billing.shopName}`,
