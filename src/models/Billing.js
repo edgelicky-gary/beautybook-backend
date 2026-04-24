@@ -13,6 +13,8 @@ const billingSchema = new mongoose.Schema({
   paidAt: { type: Date },
   dueDate: { type: Date },
   note: { type: String, default: '' },
+paymentProofUrl: { type: String, default: '' },
+paymentProofUploadedAt: { type: Date },
 }, { timestamps: true });
 
 module.exports = mongoose.models.Billing || mongoose.model('Billing', billingSchema);

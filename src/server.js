@@ -9,7 +9,7 @@ app.use(cors({ origin: '*' }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/api/staff', require('./routes/staffRoutes'));
-
+app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use('/api/auth',     require('./routes/authRoutes'));
 app.use('/api/shops',    require('./routes/shopRoutes'));
 app.use('/api/shop',     require('./routes/shopRoutes'));
