@@ -140,9 +140,11 @@ exports.lineLogin = async (req, res) => {
     const newToken = generateToken(user._id);
     res.json({ success: true, token: newToken, user });
 
-  } catch (err) {
-    console.error('LINE login error:', err.message);
-    res.status(500).json({ success: false, message: 'LINE 綁定失敗', error: err.message });
+  } } catch (err) {
+    const errData = err.response?.data || err.message;
+    console.error('LINE login error:', JSON.stringify(errData));
+    res.status(500).json({ success: false, message: 'LINE 綁定失敗', error: JSON.stringify(errData) });
+  
   }
 };
 
