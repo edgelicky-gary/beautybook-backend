@@ -77,14 +77,65 @@ exports.lineLogin = async (req, res) => {
     const { code, redirectUri } = req.body;
 
     // 1. 用 code 換取 access_token
-    const tokenRes = await axios.post('https://api.line.me/oauth2/v2.1/token', {
+    const qs = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
       redirect_uri: redirectUri,
       client_id: process.env.LINE_LOGIN_CHANNEL_ID,
       client_secret: process.env.LINE_LOGIN_CHANNEL_SECRET,
-    }, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+    });
 
+    const tokenRes = await axios.post('https://api.line.me/oauth2/v2.1/token', qs.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+
+    const { access_token } = tokenRes.data;
+
+    // 2. 取得 LINE 用戶資料
+    const profileRes = await axios.get('https://api.line.me/v2/profile', {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+
+    const { userId: lineUserId, displayName, pictureUrl } = profileRes.data;
+
+    // 3. 找或建立用戶，並綁定 lineUserId
+    const token = req.headers.authorization?.split(' ')[1];
+    let user;
+
+    if (token) {
+      // 已登入，綁定 LINE 到現有帳號
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      user = await User.findByIdAndUpdate(
+        decoded.id,
+        { lineUserId, lineDisplayName: displayName, avatar: pictureUrl || '' },
+        { new: true }
+      );
+    } else {
+      // 未登入，找或建立帳號
+      user = await User.findOne({ lineUserId });
+      if (!user) {
+        user = await User.create({
+          name: displayName,
+          email: `line_${lineUserId}@beautybook.app`,
+          phone: '',
+          password: Math.random().toString(36),
+          lineUserId,
+          lineDisplayName: displayName,
+          avatar: pictureUrl || '',
+          isVerified: true,
+        });
+      }
+    }
+
+    const newToken = generateToken(user._id);
+    res.json({ success: true, token: newToken, user });
+
+  } catch (err) {
+    console.error('LINE login error:', err.message);
+    res.status(500).json({ success: false, message: 'LINE 綁定失敗', error: err.message });
+  }
+};
     const { access_token } = tokenRes.data;
 
     // 2. 取得 LINE 用戶資料
