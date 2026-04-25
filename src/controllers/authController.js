@@ -141,10 +141,10 @@ exports.lineLogin = async (req, res) => {
     res.json({ success: true, token: newToken, user });
 
   } catch (err) {
-    console.error('LINE login error:', err.message);
-    res.status(500).json({ success: false, message: 'LINE 綁定失敗', error: err.message });
-  }
-};
+   
+    console.error('LINE login error:', err.response?.data || err.message);
+    res.status(500).json({ success: false, message: 'LINE 綁定失敗', error: err.response?.data || err.message });
+  }};
 
 // ─── 取得目前用戶資料 ─────────────────────────────────────
 exports.getMe = async (req, res) => {
