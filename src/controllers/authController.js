@@ -86,7 +86,7 @@ exports.lineLogin = async (req, res) => {
 
     // 寫死憑證測試（如果這個版本能成功，代表 Railway 環境變數有問題）
     const CLIENT_ID = '2009890232';
-    const CLIENT_SECRET = 'FBF9a555A75DFDFA4F82EBF6C003FB10';
+    const CLIENT_SECRET = '2a15f1833f7bf72288db0102f0390511';
 
     console.log('LINE login called:', {
       code: code?.slice(0, 10),
