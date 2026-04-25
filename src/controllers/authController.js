@@ -86,14 +86,10 @@ exports.lineLogin = async (req, res) => {
     const { code, redirectUri } = req.body;
 
     // 1. 用 code 換取 access_token
-    const qs = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: redirectUri,
-      client_id: process.env.LINE_LOGIN_CHANNEL_ID,
-      client_secret: process.env.LINE_LOGIN_CHANNEL_SECRET,
-    });
-
+    const tokenRes = await axios.post('https://api.line.me/oauth2/v2.1/token',
+  `grant_type=authorization_code&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${process.env.LINE_LOGIN_CHANNEL_ID}&client_secret=${process.env.LINE_LOGIN_CHANNEL_SECRET}`,
+  { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+);
     const tokenRes = await axios.post('https://api.line.me/oauth2/v2.1/token', qs.toString(), {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
