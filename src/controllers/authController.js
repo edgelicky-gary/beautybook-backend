@@ -86,10 +86,14 @@ exports.lineLogin = async (req, res) => {
     const { code, redirectUri } = req.body;
 
     // 1. 用 code 換取 access_token
-    const tokenRes = await axios.post('https://api.line.me/oauth2/v2.1/token',
-  `grant_type=authorization_code&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=${process.env.LINE_LOGIN_CHANNEL_ID}&client_secret=${process.env.LINE_LOGIN_CHANNEL_SECRET}`,
-  { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-);
+    const qs = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri,
+      client_id: process.env.LINE_LOGIN_CHANNEL_ID,
+      client_secret: process.env.LINE_LOGIN_CHANNEL_SECRET,
+    });
+
     const tokenRes = await axios.post('https://api.line.me/oauth2/v2.1/token', qs.toString(), {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
@@ -137,10 +141,10 @@ exports.lineLogin = async (req, res) => {
     res.json({ success: true, token: newToken, user });
 
   } catch (err) {
-   
-    console.error('LINE login error:', err.response?.data || err.message);
-    res.status(500).json({ success: false, message: 'LINE 綁定失敗', error: err.response?.data || err.message });
-  }};
+    console.error('LINE login error:', err.message);
+    res.status(500).json({ success: false, message: 'LINE 綁定失敗', error: err.message });
+  }
+};
 
 // ─── 取得目前用戶資料 ─────────────────────────────────────
 exports.getMe = async (req, res) => {
