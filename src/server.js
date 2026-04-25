@@ -20,6 +20,7 @@ app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/admin',    require('./routes/adminRoutes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
+app.get('/debug-env', (req, res) => { const secret = process.env.LINE_LOGIN_CHANNEL_SECRET || ''; const id = process.env.LINE_LOGIN_CHANNEL_ID || ''; res.json({ id_value: id, id_length: id.length, secret_length: secret.length, secret_first5: secret.slice(0,5), secret_last5: secret.slice(-5), secret_has_space: secret.includes(' '), secret_trimmed_length: secret.trim().length }); });
 
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
