@@ -79,12 +79,22 @@ exports.phoneLogin = async (req, res) => {
   }
 };
 
-// LINE Login（支援登入 + 綁定兩種模式）
+// LINE Login（憑證寫死測試）
 exports.lineLogin = async (req, res) => {
   try {
-    const { code, redirectUri, bindToken } = req.body;
+    const { code, redirectUri } = req.body;
 
-    console.log('LINE login called:', { code: code?.slice(0,10), redirectUri, hasBind: !!bindToken });
+    // 寫死憑證測試（如果這個版本能成功，代表 Railway 環境變數有問題）
+    const CLIENT_ID = '2009890232';
+    const CLIENT_SECRET = 'FBF9a555A75DFDFA4F82EBF6C003FB10';
+
+    console.log('LINE login called:', {
+      code: code?.slice(0, 10),
+      redirectUri,
+      usingHardcoded: true,
+      clientId: CLIENT_ID,
+      secretLength: CLIENT_SECRET.length
+    });
 
     if (!code) {
       return res.status(400).json({ success: false, message: '缺少 code 參數' });
@@ -98,8 +108,8 @@ exports.lineLogin = async (req, res) => {
     params.append('grant_type', 'authorization_code');
     params.append('code', code);
     params.append('redirect_uri', redirectUri);
-    params.append('client_id', process.env.LINE_LOGIN_CHANNEL_ID);
-    params.append('client_secret', process.env.LINE_LOGIN_CHANNEL_SECRET);
+    params.append('client_id', CLIENT_ID);
+    params.append('client_secret', CLIENT_SECRET);
 
     let tokenRes;
     try {
@@ -127,46 +137,39 @@ exports.lineLogin = async (req, res) => {
     const { userId: lineUserId, displayName, pictureUrl } = profileRes.data;
     console.log('LINE profile:', { lineUserId, displayName });
 
-    // 3. 判斷模式
-    if (bindToken) {
-      // ── 綁定模式：把 LINE 綁到現有帳號 ──
-      let decoded;
+    // 3. 判斷模式：綁定（有 Authorization header）或登入
+    const authHeader = req.headers.authorization;
+    let user;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      // 綁定模式
+      const token = authHeader.split(' ')[1];
       try {
-        decoded = jwt.verify(bindToken, process.env.JWT_SECRET);
-      } catch (e) {
-        return res.status(401).json({ success: false, message: 'Token 無效或已過期，請重新登入' });
-      }
-
-      // 確認此 LINE 帳號沒被其他人用
-      const existingLine = await User.findOne({ lineUserId });
-      if (existingLine && existingLine._id.toString() !== decoded.id) {
-        return res.status(400).json({ success: false, message: '此 LINE 帳號已綁定其他使用者' });
-      }
-
-      const user = await User.findByIdAndUpdate(
-        decoded.id,
-        { lineUserId, lineDisplayName: displayName, avatar: pictureUrl || '' },
-        { new: true }
-      );
-
-      if (!user) {
-        return res.status(404).json({ success: false, message: '找不到使用者' });
-      }
-
-      console.log('LINE bind success:', user._id);
-      return res.json({
-        success: true,
-        message: 'LINE 綁定成功',
-        data: {
-          lineLinked: true,
-          lineName: displayName,
-          lineAvatar: pictureUrl,
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // 確認此 LINE 帳號沒被其他人用
+        const existingLine = await User.findOne({ lineUserId });
+        if (existingLine && existingLine._id.toString() !== decoded.id) {
+          return res.status(400).json({ success: false, message: '此 LINE 帳號已綁定其他使用者' });
         }
-      });
+        user = await User.findByIdAndUpdate(
+          decoded.id,
+          { lineUserId, lineDisplayName: displayName, avatar: pictureUrl || '' },
+          { new: true }
+        );
+        console.log('LINE bind success:', user._id);
+        return res.json({
+          success: true,
+          message: 'LINE 綁定成功',
+          user: { id: user._id, name: user.name, lineUserId: user.lineUserId }
+        });
+      } catch (e) {
+        console.error('Bind token error:', e.message);
+        // token 無效就走登入模式
+      }
     }
 
-    // ── 登入模式：用 LINE 登入或建立帳號 ──
-    let user = await User.findOne({ lineUserId });
+    // 登入模式
+    user = await User.findOne({ lineUserId });
     if (!user) {
       user = await User.create({
         name: displayName,
@@ -196,7 +199,6 @@ exports.lineLogin = async (req, res) => {
         lineUserId: user.lineUserId,
         lineDisplayName: user.lineDisplayName,
         avatar: user.avatar,
-        lineLinked: true,
       }
     });
 
