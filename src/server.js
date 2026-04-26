@@ -20,7 +20,8 @@ app.use('/api/payment',  require('./routes/paymentRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/admin',    require('./routes/adminRoutes'));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.0.0-debug' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '1.1.0' }));
+
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('✅ MongoDB 連線成功');

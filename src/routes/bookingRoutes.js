@@ -4,10 +4,8 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const { sendBookingConfirmation } = require('../services/lineNotify');
 
+// 建立預約
 router.post('/', protect, async (req, res) => {
-  // 用來收集 LINE 通知的除錯資訊
-  const lineDebug = { steps: [] };
-
   try {
     const { shopId, shopName, shopAddress, serviceId, serviceName, servicePrice, serviceDuration, staffName, date, startTime, customerNote, paymentMethod } = req.body;
     if (!shopId || !serviceName || !servicePrice || !date || !startTime) {
@@ -31,41 +29,30 @@ router.post('/', protect, async (req, res) => {
     });
     await booking.save();
 
-    // === LINE 通知 ===
-    lineDebug.steps.push('1. 預約已建立');
-    try {
-      const customer = await User.findById(req.userId);
-      lineDebug.customerFound = !!customer;
-      lineDebug.lineUserId = customer?.lineUserId || null;
-      lineDebug.steps.push(`2. 顧客查詢: ${customer ? '找到' : '找不到'}`);
-      lineDebug.steps.push(`3. lineUserId: ${customer?.lineUserId || '未綁定'}`);
-
+    // 發送 LINE 預約成功通知（非同步，失敗不影響預約建立）
+    User.findById(req.userId).then(customer => {
       if (customer?.lineUserId) {
-        // 組裝 LINE 訊息需要的物件結構（補上欠缺的欄位）
         const bookingForLine = {
           ...booking.toObject(),
           shopId: { name: shopName, address: shopAddress, _id: shopId },
           serviceId: { name: serviceName, duration: Number(serviceDuration) || 60 },
           staffId: { name: staffName || '不指定' },
         };
-        lineDebug.steps.push('4. 開始發送 LINE 訊息');
-        const result = await sendBookingConfirmation(bookingForLine, customer);
-        lineDebug.lineResult = result;
-        lineDebug.steps.push(`5. 結果: ${JSON.stringify(result)}`);
-      } else {
-        lineDebug.steps.push('4. 跳過（未綁定 LINE）');
+        sendBookingConfirmation(bookingForLine, customer).catch(err => {
+          console.error('LINE 通知發送失敗:', err.message);
+        });
       }
-    } catch (notifyErr) {
-      lineDebug.error = notifyErr.message;
-      lineDebug.steps.push(`錯誤: ${notifyErr.message}`);
-    }
+    }).catch(err => {
+      console.error('LINE 通知處理錯誤:', err.message);
+    });
 
-    res.status(201).json({ success: true, booking, lineDebug });
+    res.status(201).json({ success: true, booking });
   } catch (err) {
-    res.status(500).json({ message: err.message, lineDebug });
+    res.status(500).json({ message: err.message });
   }
 });
 
+// 取得我的預約列表
 router.get('/my', protect, async (req, res) => {
   try {
     const bookings = await Booking.find({ customerId: req.userId }).sort({ date: -1 });
@@ -75,6 +62,7 @@ router.get('/my', protect, async (req, res) => {
   }
 });
 
+// 取消預約
 router.put('/:id/cancel', protect, async (req, res) => {
   try {
     const booking = await Booking.findOne({ _id: req.params.id, customerId: req.userId });
@@ -87,6 +75,7 @@ router.put('/:id/cancel', protect, async (req, res) => {
   }
 });
 
+// 店家查詢預約列表
 router.get('/shop/:shopId', protect, async (req, res) => {
   try {
     const bookings = await Booking.find({ shopId: req.params.shopId })
@@ -98,6 +87,7 @@ router.get('/shop/:shopId', protect, async (req, res) => {
   }
 });
 
+// 更新預約狀態
 router.put('/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
