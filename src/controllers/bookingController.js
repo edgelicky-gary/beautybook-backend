@@ -20,7 +20,6 @@ exports.getAvailableSlots = async (req, res) => {
     const hours = shop.businessHours[dayOfWeek];
     if (!hours?.isOpen) return res.json({ slots: [], message: '當日店家公休' });
 
-    // 產生時段
     const slots = [];
     const slotDuration = shop.bookingSettings.slotDuration || 30;
     const serviceDuration = service.duration;
@@ -34,7 +33,6 @@ exports.getAvailableSlots = async (req, res) => {
       current = current.add(slotDuration, 'minute');
     }
 
-    // 排除已被預約的時段
     const existingBookings = await Booking.find({
       staffId,
       date: new Date(date),
@@ -60,6 +58,10 @@ exports.getAvailableSlots = async (req, res) => {
 
 // 建立預約
 exports.createBooking = async (req, res) => {
+  console.log('========== 建立預約開始 ==========');
+  console.log('req.userId:', req.userId);
+  console.log('req.body:', JSON.stringify(req.body));
+
   try {
     const { shopId, staffId, serviceId, date, startTime, customerNote, paymentMethod } = req.body;
 
@@ -70,7 +72,6 @@ exports.createBooking = async (req, res) => {
       .add(service.duration, 'minute')
       .format('HH:mm');
 
-    // 確認時段沒有衝突
     const conflict = await Booking.findOne({
       staffId,
       date: new Date(date),
@@ -105,25 +106,34 @@ exports.createBooking = async (req, res) => {
 
     await booking.populate(['serviceId', 'staffId', 'shopId']);
 
-    // 發送 LINE 預約成功通知（非阻塞，失敗不影響預約建立）
+    console.log('預約建立成功，booking._id:', booking._id);
+
+    // 發送 LINE 預約成功通知
     try {
+      console.log('準備查詢顧客資料...');
       const customer = await User.findById(req.userId);
+      console.log('查詢到顧客:', customer ? customer._id : 'null');
+      console.log('lineUserId:', customer?.lineUserId);
+
       if (customer?.lineUserId) {
-        sendBookingConfirmation(booking, customer).catch(err => {
-          console.error('LINE 通知發送失敗:', err.message);
-        });
+        console.log('開始發送 LINE 訊息...');
+        const result = await sendBookingConfirmation(booking, customer);
+        console.log('LINE 訊息結果:', JSON.stringify(result));
+      } else {
+        console.log('顧客未綁定 LINE，跳過通知');
       }
     } catch (notifyErr) {
-      console.error('LINE 通知處理錯誤:', notifyErr.message);
+      console.error('LINE 通知處理錯誤:', notifyErr.message, notifyErr.stack);
     }
 
+    console.log('========== 建立預約完成 ==========');
     res.status(201).json({ success: true, booking });
   } catch (err) {
+    console.error('建立預約錯誤:', err.message);
     res.status(500).json({ message: err.message });
   }
 };
 
-// 取得我的預約列表
 exports.getMyBookings = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
@@ -145,7 +155,6 @@ exports.getMyBookings = async (req, res) => {
   }
 };
 
-// 取消預約
 exports.cancelBooking = async (req, res) => {
   try {
     const booking = await Booking.findOne({ _id: req.params.id, customerId: req.userId });
@@ -163,7 +172,6 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
-// 店家查詢預約列表
 exports.getShopBookings = async (req, res) => {
   try {
     const { date, staffId, status } = req.query;
@@ -185,7 +193,6 @@ exports.getShopBookings = async (req, res) => {
   }
 };
 
-// 完成預約 / 評價
 exports.completeBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
