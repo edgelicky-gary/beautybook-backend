@@ -3,9 +3,11 @@ const { Booking } = require('../models/Service');
 const Service = require('../models/Service');
 const { Staff } = require('../models/Service');
 const Shop = require('../models/Shop');
+const User = require('../models/User');
 const dayjs = require('dayjs');
+const { sendBookingConfirmation } = require('../services/lineNotify');
 
-// ─── 取得可預約時段 ───────────────────────────────────────
+// 查詢可用時段
 exports.getAvailableSlots = async (req, res) => {
   try {
     const { shopId, staffId, serviceId, date } = req.query;
@@ -16,9 +18,9 @@ exports.getAvailableSlots = async (req, res) => {
 
     const dayOfWeek = dayjs(date).format('dddd').toLowerCase();
     const hours = shop.businessHours[dayOfWeek];
-    if (!hours?.isOpen) return res.json({ slots: [], message: '該日店家公休' });
+    if (!hours?.isOpen) return res.json({ slots: [], message: '當日店家公休' });
 
-    // 產生時段列表
+    // 產生時段
     const slots = [];
     const slotDuration = shop.bookingSettings.slotDuration || 30;
     const serviceDuration = service.duration;
@@ -32,7 +34,7 @@ exports.getAvailableSlots = async (req, res) => {
       current = current.add(slotDuration, 'minute');
     }
 
-    // 過濾已被預約的時段
+    // 排除已被預約的時段
     const existingBookings = await Booking.find({
       staffId,
       date: new Date(date),
@@ -56,7 +58,7 @@ exports.getAvailableSlots = async (req, res) => {
   }
 };
 
-// ─── 建立預約 ─────────────────────────────────────────────
+// 建立預約
 exports.createBooking = async (req, res) => {
   try {
     const { shopId, staffId, serviceId, date, startTime, customerNote, paymentMethod } = req.body;
@@ -68,7 +70,7 @@ exports.createBooking = async (req, res) => {
       .add(service.duration, 'minute')
       .format('HH:mm');
 
-    // 再次確認時段是否可用
+    // 確認時段沒有衝突
     const conflict = await Booking.findOne({
       staffId,
       date: new Date(date),
@@ -78,7 +80,7 @@ exports.createBooking = async (req, res) => {
       ]
     });
 
-    if (conflict) return res.status(409).json({ message: '該時段已被預約，請選擇其他時段' });
+    if (conflict) return res.status(409).json({ message: '此時段已被預約，請選擇其他時段' });
 
     const shop = await Shop.findById(shopId);
     const depositAmount = shop.bookingSettings.requireDeposit
@@ -103,8 +105,17 @@ exports.createBooking = async (req, res) => {
 
     await booking.populate(['serviceId', 'staffId', 'shopId']);
 
-    // 傳送 LINE 通知
-    // await sendLineNotification(booking);
+    // 發送 LINE 預約成功通知（非阻塞，失敗不影響預約建立）
+    try {
+      const customer = await User.findById(req.userId);
+      if (customer?.lineUserId) {
+        sendBookingConfirmation(booking, customer).catch(err => {
+          console.error('LINE 通知發送失敗:', err.message);
+        });
+      }
+    } catch (notifyErr) {
+      console.error('LINE 通知處理錯誤:', notifyErr.message);
+    }
 
     res.status(201).json({ success: true, booking });
   } catch (err) {
@@ -112,7 +123,7 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// ─── 取得我的預約列表 ─────────────────────────────────────
+// 取得我的預約列表
 exports.getMyBookings = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
@@ -134,14 +145,14 @@ exports.getMyBookings = async (req, res) => {
   }
 };
 
-// ─── 取消預約 ─────────────────────────────────────────────
+// 取消預約
 exports.cancelBooking = async (req, res) => {
   try {
     const booking = await Booking.findOne({ _id: req.params.id, customerId: req.userId });
     if (!booking) return res.status(404).json({ message: '預約不存在' });
 
     const hoursUntil = dayjs(`${booking.date} ${booking.startTime}`).diff(dayjs(), 'hour');
-    if (hoursUntil < 2) return res.status(400).json({ message: '預約時間過近，無法取消' });
+    if (hoursUntil < 2) return res.status(400).json({ message: '預約前 2 小時內無法取消' });
 
     booking.status = 'cancelled';
     await booking.save();
@@ -152,7 +163,7 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
-// ─── 店家取得預約列表 ─────────────────────────────────────
+// 店家查詢預約列表
 exports.getShopBookings = async (req, res) => {
   try {
     const { date, staffId, status } = req.query;
@@ -174,7 +185,7 @@ exports.getShopBookings = async (req, res) => {
   }
 };
 
-// ─── 完成預約 / 評價 ──────────────────────────────────────
+// 完成預約 / 評價
 exports.completeBooking = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
