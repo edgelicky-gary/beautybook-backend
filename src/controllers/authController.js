@@ -79,22 +79,10 @@ exports.phoneLogin = async (req, res) => {
   }
 };
 
-// LINE Login（憑證寫死測試）
+// LINE Login（支援登入 + 綁定模式）
 exports.lineLogin = async (req, res) => {
   try {
     const { code, redirectUri } = req.body;
-
-    // 寫死憑證測試（如果這個版本能成功，代表 Railway 環境變數有問題）
-    const CLIENT_ID = '2009890232';
-    const CLIENT_SECRET = '2a15f1833f7bf72288db0102f0390511';
-
-    console.log('LINE login called:', {
-      code: code?.slice(0, 10),
-      redirectUri,
-      usingHardcoded: true,
-      clientId: CLIENT_ID,
-      secretLength: CLIENT_SECRET.length
-    });
 
     if (!code) {
       return res.status(400).json({ success: false, message: '缺少 code 參數' });
@@ -108,8 +96,8 @@ exports.lineLogin = async (req, res) => {
     params.append('grant_type', 'authorization_code');
     params.append('code', code);
     params.append('redirect_uri', redirectUri);
-    params.append('client_id', CLIENT_ID);
-    params.append('client_secret', CLIENT_SECRET);
+    params.append('client_id', process.env.LINE_LOGIN_CHANNEL_ID);
+    params.append('client_secret', process.env.LINE_LOGIN_CHANNEL_SECRET);
 
     let tokenRes;
     try {
@@ -135,7 +123,6 @@ exports.lineLogin = async (req, res) => {
     });
 
     const { userId: lineUserId, displayName, pictureUrl } = profileRes.data;
-    console.log('LINE profile:', { lineUserId, displayName });
 
     // 3. 判斷模式：綁定（有 Authorization header）或登入
     const authHeader = req.headers.authorization;
@@ -156,14 +143,12 @@ exports.lineLogin = async (req, res) => {
           { lineUserId, lineDisplayName: displayName, avatar: pictureUrl || '' },
           { new: true }
         );
-        console.log('LINE bind success:', user._id);
         return res.json({
           success: true,
           message: 'LINE 綁定成功',
           user: { id: user._id, name: user.name, lineUserId: user.lineUserId }
         });
       } catch (e) {
-        console.error('Bind token error:', e.message);
         // token 無效就走登入模式
       }
     }
@@ -188,7 +173,6 @@ exports.lineLogin = async (req, res) => {
     }
 
     const newToken = generateToken(user._id);
-    console.log('LINE login success:', user._id);
     res.json({
       success: true,
       token: newToken,
