@@ -4,10 +4,17 @@ const crypto = require('crypto');
 const Billing = require('../models/Billing');
 const Shop = require('../models/Shop');
 
-const ECPAY_MERCHANT_ID = '2000132';
-const ECPAY_HASH_KEY = '5294y06JbISpM5x9';
-const ECPAY_HASH_IV = 'v77hoKGq4kWxNNIS';
-const ECPAY_URL = 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckout/Index';
+// 從環境變數讀取，預設為測試憑證（防呆）
+const ECPAY_MERCHANT_ID = process.env.ECPAY_MERCHANT_ID || '2000132';
+const ECPAY_HASH_KEY = process.env.ECPAY_HASH_KEY || '5294y06JbISpM5x9';
+const ECPAY_HASH_IV = process.env.ECPAY_HASH_IV || 'v77hoKGq4kWxNNIS';
+
+// 根據環境決定 API URL
+const IS_PROD = process.env.NODE_ENV === 'production';
+const ECPAY_URL = IS_PROD
+  ? 'https://payment.ecpay.com.tw/Cashier/AioCheckOut/V5'
+  : 'https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5';
+
 const BACKEND_URL = 'https://beautybook-backend-production.up.railway.app';
 
 // 產生檢查碼
@@ -29,7 +36,7 @@ function generateCheckMac(params) {
   return crypto.createHash('sha256').update(str).digest('hex').toUpperCase();
 }
 
-// POST /api/payment/create - 建立付款訂單
+// POST /api/payment/create - 建立綠界付款訂單
 router.post('/create', async (req, res) => {
   try {
     const { billingId } = req.body;
@@ -40,11 +47,15 @@ router.post('/create', async (req, res) => {
     const params = {
       MerchantID: ECPAY_MERCHANT_ID,
       MerchantTradeNo: orderId,
-      MerchantTradeDate: (() => { const d = new Date(); const pad = n => String(n).padStart(2, '0'); return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; })(),
+      MerchantTradeDate: (() => {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      })(),
       PaymentType: 'aio',
       TotalAmount: billing.totalFee,
-      TradeDesc: `BeautyBook月費-${billing.shopName}`,
-      ItemName: `BeautyBook月費 NT$${billing.totalFee}`,
+      TradeDesc: `BeautyBook服務費-${billing.shopName}`,
+      ItemName: `BeautyBook服務費 NT$${billing.totalFee}`,
       ReturnURL: `${BACKEND_URL}/api/payment/notify`,
       ClientBackURL: `https://beautybook-shop-admin.vercel.app/payment-result`,
       ChoosePayment: 'Credit',
@@ -55,7 +66,7 @@ router.post('/create', async (req, res) => {
     // 儲存 orderId 到 billing
     await Billing.findByIdAndUpdate(billingId, { orderId });
 
-    // 回傳表單資料讓前端提交
+    // 回傳給前端，由前端組 form 提交
     res.json({ url: ECPAY_URL, params });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -66,14 +77,14 @@ router.post('/create', async (req, res) => {
 router.post('/notify', express.urlencoded({ extended: true }), async (req, res) => {
   try {
     const { MerchantTradeNo, RtnCode, CheckMacValue, ...rest } = req.body;
-    
+
     // 驗證檢查碼
     const params = { MerchantTradeNo, RtnCode, ...rest };
     delete params.CheckMacValue;
     const expectedMac = generateCheckMac(params);
-    
+
     if (CheckMacValue !== expectedMac) {
-      return res.send('0|ErrorMessage');
+      return res.send('0|CheckMacValue Error');
     }
 
     if (RtnCode === '1') {
