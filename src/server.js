@@ -21,6 +21,7 @@ app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/admin',    require('./routes/adminRoutes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '1.2.0' }));
+app.post('/api/test/create-billing', async (req, res) => { try { const Billing = require('./models/Billing'); const Shop = require('./models/Shop'); const shop = await Shop.findOne(); const b = await Billing.create({ shopId: shop._id, shopName: shop.name, year: 2026, month: 4, monthlyFee: 999, staffFee: 200, totalFee: 1199, status: 'pending', dueDate: new Date('2026-05-31') }); res.json({ success: true, billing: b }); } catch (err) { res.status(500).json({ message: err.message }); } });
 
 // 手動觸發提醒（測試用，正式上線前可移除）
 app.post('/api/admin/run-reminder', async (req, res) => {
