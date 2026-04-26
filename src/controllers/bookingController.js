@@ -107,7 +107,7 @@ exports.createBooking = async (req, res) => {
       lineDebug.steps.push(`錯誤: ${notifyErr.message}`);
     }
 
-    res.status(201).json({ success: true, booking, lineDebug });
+res.status(201).json({ NEW_VERSION: true, success: true, booking, lineDebug });
   } catch (err) {
     res.status(500).json({ message: err.message, lineDebug });
   }
