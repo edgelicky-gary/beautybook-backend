@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -20,6 +20,7 @@ app.use('/api/payment',  require('./routes/paymentRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/admin',    require('./routes/adminRoutes'));
 app.use('/api/line-oa',  require('./routes/lineOaRoutes'));
+app.use('/api/coupons', require('./routes/couponRoutes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '1.3.0' }));
 
