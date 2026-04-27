@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 if (mongoose.models.Booking) {
   delete mongoose.models.Booking;
@@ -20,6 +20,10 @@ const bookingSchema = new mongoose.Schema({
   paymentMethod: { type: String, default: 'none' },
   customerNote: { type: String, default: '' },
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled', 'completed'], default: 'confirmed' },
+  couponId: { type: mongoose.Schema.Types.ObjectId, ref: 'Coupon', default: null },
+  couponName: { type: String, default: '' },
+  discountAmount: { type: Number, default: 0 },
+  finalPrice: { type: Number, default: 0 },
   rating: { type: Number },
   review: { type: String },
 }, { timestamps: true });

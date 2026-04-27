@@ -123,4 +123,102 @@ router.put('/:id/toggle', authShopOwner, async (req, res) => {
   }
 });
 
+
+// ========== 顧客端 API ==========
+
+const { protect } = require('../middleware/authMiddleware');
+const { validateCoupon, calculateDiscount } = require('../services/couponHelper');
+
+// GET /api/coupons/public/:shopId - 列公開可用券（不需登入）
+router.get('/public/:shopId', async (req, res) => {
+  try {
+    const now = new Date();
+    const coupons = await Coupon.find({
+      shopId: req.params.shopId,
+      isActive: true,
+      isPublic: true,
+      requireCode: false,
+      $and: [
+        { $or: [{ startAt: null }, { startAt: { $lte: now } }] },
+        { $or: [{ endAt: null }, { endAt: { $gte: now } }] },
+      ],
+    }).sort({ createdAt: -1 });
+    res.json(coupons);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/coupons/validate - 驗證代碼券或一般優惠券（顧客需登入）
+// body: { code, couponId, shopId, serviceIds, staffId, totalPrice }
+router.post('/validate', protect, async (req, res) => {
+  try {
+    const { code, shopId, serviceIds, staffId, totalPrice } = req.body;
+    let { couponId } = req.body;
+
+    // 如果只給 code，找出對應的 couponId
+    if (!couponId && code && shopId) {
+      const c = await Coupon.findOne({
+        shopId,
+        code: String(code).toUpperCase().trim(),
+        requireCode: true,
+      });
+      if (!c) return res.status(404).json({ valid: false, message: '代碼無效' });
+      couponId = c._id;
+    }
+
+    const result = await validateCoupon({
+      couponId,
+      shopId,
+      customerId: req.userId,
+      serviceIds,
+      staffId,
+      totalPrice: Number(totalPrice || 0),
+    });
+
+    if (!result.valid) {
+      return res.status(400).json(result);
+    }
+
+    const calc = calculateDiscount(result.coupon, Number(totalPrice || 0));
+    res.json({
+      valid: true,
+      coupon: result.coupon,
+      discountAmount: calc.discountAmount,
+      finalPrice: calc.finalPrice,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/coupons/calculate - 試算（顧客需登入）
+// body: { couponId, shopId, serviceIds, staffId, totalPrice }
+router.post('/calculate', protect, async (req, res) => {
+  try {
+    const { couponId, shopId, serviceIds, staffId, totalPrice } = req.body;
+    const result = await validateCoupon({
+      couponId,
+      shopId,
+      customerId: req.userId,
+      serviceIds,
+      staffId,
+      totalPrice: Number(totalPrice || 0),
+    });
+
+    if (!result.valid) {
+      return res.status(400).json(result);
+    }
+
+    const calc = calculateDiscount(result.coupon, Number(totalPrice || 0));
+    res.json({
+      valid: true,
+      discountAmount: calc.discountAmount,
+      finalPrice: calc.finalPrice,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
