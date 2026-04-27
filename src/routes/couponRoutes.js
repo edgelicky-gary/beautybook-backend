@@ -110,8 +110,8 @@ router.delete('/:id', authShopOwner, async (req, res) => {
   }
 });
 
-// PATCH /api/coupons/:id/toggle - 啟用/停用切換
-router.patch('/:id/toggle', authShopOwner, async (req, res) => {
+// PUT /api/coupons/:id/toggle - 啟用/停用切換
+router.put('/:id/toggle', authShopOwner, async (req, res) => {
   try {
     const coupon = await Coupon.findOne({ _id: req.params.id, shopId: req.shopId });
     if (!coupon) return res.status(404).json({ message: '找不到優惠券' });
