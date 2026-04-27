@@ -19,20 +19,9 @@ app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/payment',  require('./routes/paymentRoutes'));
 app.use('/api/subscriptions', require('./routes/subscriptionRoutes'));
 app.use('/api/admin',    require('./routes/adminRoutes'));
+app.use('/api/line-oa',  require('./routes/lineOaRoutes'));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', version: '1.2.0' }));
-app.post('/api/test/create-billing', async (req, res) => { try { const Billing = require('./models/Billing'); const Shop = require('./models/Shop'); const shop = await Shop.findOne(); const b = await Billing.create({ shopId: shop._id, shopName: shop.name, year: 2026, month: 4, monthlyFee: 999, staffFee: 200, totalFee: 1199, status: 'pending', dueDate: new Date('2026-05-31') }); res.json({ success: true, billing: b }); } catch (err) { res.status(500).json({ message: err.message }); } });
-
-// 手動觸發提醒（測試用，正式上線前可移除）
-app.post('/api/admin/run-reminder', async (req, res) => {
-  // 簡單驗證：需要帶上密鑰
-  if (req.body.secret !== process.env.JWT_SECRET) {
-    return res.status(403).json({ message: '無權限' });
-  }
-  const { runReminder } = require('./jobs/reminderJob');
-  const result = await runReminder();
-  res.json({ success: true, result });
-});
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '1.3.0' }));
 
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
